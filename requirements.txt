@@ -1,0 +1,5 @@
+streamlit==1.36.0
+langchain-google-genai==1.0.7
+langchain-community==0.2.6
+supabase==2.5.1
+python-dotenv==1.0.1

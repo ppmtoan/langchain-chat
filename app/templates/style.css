@@ -1,0 +1,15 @@
+.stTextArea textarea {
+    border: 2px solid #4CAF50;
+    border-radius: 5px;
+}
+.stButton>button {
+    background-color: #4CAF50;
+    color: white;
+    border-radius: 5px;
+}
+.stContainer {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
