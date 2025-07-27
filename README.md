@@ -24,7 +24,13 @@ A chat application built with Streamlit, LangChain, Google Gemini, and Supabase 
    - Enable `pgvector` extension in Supabase SQL Editor (Dashboard > SQL Editor > Quick Start > LangChain).
    - Run `scripts/setup_supabase.sql` in the Supabase SQL Editor to create the `messages` table.
 
-5. Run the app:
+5. Temporarily add the current directory to the Python path:
+
+   ```bash
+   export PYTHONPATH=$PYTHONPATH:$(pwd)
+   ```
+
+6. Run the app:
    ```bash
    ./run.sh
    ```
