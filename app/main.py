@@ -9,6 +9,7 @@ from app.database.supabase_client import SupabaseClient
 from app.database.vector_store import VectorStore
 from app.models.gemini import GeminiModel
 from app.utils.image_handler import process_image
+from app.utils.document_loader import load_document
 from langchain_core.messages import HumanMessage, SystemMessage
 import uuid
 import os
@@ -21,24 +22,31 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
+if "document_ids" not in st.session_state:
+    st.session_state.document_ids = []
 
 # Load CSS
 with open("app/templates/style.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 def setup_api_keys():
-    if not all(key in os.environ for key in [Config.SUPABASE_URL, Config.SUPABASE_KEY, Config.GOOGLE_API_KEY]):
+    if "SUPABASE_URL" not in st.secrets or "SUPABASE_KEY" not in st.secrets or "GOOGLE_API_KEY" not in st.secrets:
         st.subheader("Enter API Keys")
         supabase_url = st.text_input("Supabase URL:", type="default")
         supabase_key = st.text_input("Supabase Service Role Key:", type="password")
         google_api_key = st.text_input("Google AI API Key:", type="password")
         if supabase_url and supabase_key and google_api_key:
-            os.environ[Config.SUPABASE_URL] = supabase_url
-            os.environ[Config.SUPABASE_KEY] = supabase_key
-            os.environ[Config.GOOGLE_API_KEY] = google_api_key
+            st.session_state["SUPABASE_URL"] = supabase_url
+            st.session_state["SUPABASE_KEY"] = supabase_key
+            st.session_state["GOOGLE_API_KEY"] = google_api_key
             st.success("API keys set successfully!")
-        return False
-    return True
+            return False
+    else:
+        os.environ[Config.SUPABASE_URL] = st.secrets["SUPABASE_URL"]
+        os.environ[Config.SUPABASE_KEY] = st.secrets["SUPABASE_KEY"]
+        os.environ[Config.GOOGLE_API_KEY] = st.secrets["GOOGLE_API_KEY"]
+        return True
+    return False
 
 def main():
     st.title("Gemini Chat App with Supabase")
@@ -59,15 +67,28 @@ def main():
     # Load messages
     st.session_state.messages = supabase_client.load_messages(st.session_state.session_id)
 
-    # Initialize vector store
-    vector_store.initialize(st.session_state.messages)
+    # Document upload
+    st.subheader("Upload Document (PDF or TXT)")
+    uploaded_doc = st.file_uploader("Upload a document (optional)", type=["pdf", "txt"])
+    if uploaded_doc:
+        try:
+            documents, document_id = load_document(uploaded_doc, supabase_client.client)
+            if documents:
+                vector_store.add_documents(documents, st.session_state.session_id, document_id)
+                st.session_state.document_ids.append(document_id)
+                st.success(f"Document {uploaded_doc.name} loaded successfully!")
+        except Exception as e:
+            st.error(f"Error loading document: {str(e)}")
+
+    # Initialize vector store with messages and documents
+    vector_store.initialize(st.session_state.messages, st.session_state.document_ids)
 
     # System prompt
-    system_prompt = SystemMessage(content="You are a helpful assistant that can process text and images. Provide accurate and concise responses.")
+    system_prompt = SystemMessage(content="You are a helpful assistant that can process text, images, and documents. Provide accurate and concise responses, using provided document context when relevant.")
 
     # Image upload
     uploaded_file = st.file_uploader("Upload an image (optional)", type=["png", "jpg", "jpeg"])
-    image_path, image_url = process_image(uploaded_file)
+    image_path, image_url = process_image(uploaded_file, supabase_client.client) if uploaded_file else (None, None)
 
     # Chat input
     user_input = st.text_area("Your message:", height=100)
@@ -85,7 +106,8 @@ def main():
             messages = [system_prompt]
             context = vector_store.get_context(user_input or "Describe the image")
             if context:
-                messages.append(SystemMessage(content=f"Context from conversation: {context[0].page_content}"))
+                context_text = "\n".join([doc.page_content for doc in context])
+                messages.append(SystemMessage(content=f"Context from conversation and documents: {context_text}"))
             messages.append(HumanMessage(content=content))
 
             try:
@@ -93,11 +115,11 @@ def main():
                 assistant_message = {"role": "assistant", "content": response.content, "image_path": None}
                 st.session_state.messages.append(assistant_message)
                 supabase_client.save_message(st.session_state.session_id, "assistant", response.content)
-                vector_store.initialize(st.session_state.messages)
+                vector_store.initialize(st.session_state.messages, st.session_state.document_ids)
             except Exception as e:
                 st.error(f"Error getting response: {str(e)}")
         else:
-            st.warning("Please enter a message or upload an image.")
+            st.warning("Please enter a message, upload an image, or upload a document.")
 
     # Display conversation history
     st.subheader("Conversation History")
@@ -115,8 +137,9 @@ def main():
             supabase_client.clear_history(st.session_state.session_id)
             vector_store.clear(st.session_state.session_id)
             st.session_state.messages = []
+            st.session_state.document_ids = []
             st.session_state.session_id = str(uuid.uuid4())
-            st.success("Chat history cleared!")
+            st.success("Chat history and documents cleared!")
         except Exception as e:
             st.error(f"Error clearing history: {str(e)}")
 
