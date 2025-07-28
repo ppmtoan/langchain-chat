@@ -99,9 +99,9 @@ def main():
             if image_url:
                 content.append({"type": "image_url", "image_url": image_url})
 
-            user_message = {"role": "user", "content": user_input or "Image provided", "image_path": image_path}
+            user_message = {"role": "user", "content": user_input or "Image provided", "image_url": image_url}
             st.session_state.messages.append(user_message)
-            supabase_client.save_message(st.session_state.session_id, "user", user_input or "Image provided", image_path)
+            supabase_client.save_message(st.session_state.session_id, "user", user_input or "Image provided", image_url)
 
             messages = [system_prompt]
             context = vector_store.get_context(user_input or "Describe the image")
@@ -112,7 +112,7 @@ def main():
 
             try:
                 response = gemini_model.invoke(messages)
-                assistant_message = {"role": "assistant", "content": response.content, "image_path": None}
+                assistant_message = {"role": "assistant", "content": response.content, "image_url": None}
                 st.session_state.messages.append(assistant_message)
                 supabase_client.save_message(st.session_state.session_id, "assistant", response.content)
                 vector_store.initialize(st.session_state.messages, st.session_state.document_ids)
@@ -127,8 +127,8 @@ def main():
         with st.container():
             if msg["role"] == "user":
                 st.markdown(f"**You**: {msg['content']}")
-                if msg["image_path"]:
-                    st.image(msg["image_path"], width=200)
+                if msg.get("image_url"):
+                    st.image(msg["image_url"], width=200)
             else:
                 st.markdown(f"**Assistant**: {msg['content']}")
 
