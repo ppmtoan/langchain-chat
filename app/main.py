@@ -1,5 +1,3 @@
-import sys, os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st
 from app.config import Config
 from app.database.supabase_client import SupabaseClient
