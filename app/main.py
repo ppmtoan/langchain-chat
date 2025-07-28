@@ -1,3 +1,8 @@
+import sys
+import os
+
+# Add current working directory to Python path
+sys.path.append(os.getcwd())
 import streamlit as st
 from app.config import Config
 from app.database.supabase_client import SupabaseClient
