@@ -6,7 +6,7 @@ class VectorStore:
         self.embeddings = embeddings
         self.vector_store = None
 
-    def initialize(self, messages, document_ids):
+    def initialize(self, messages, document_ids, session_id):
         try:
             texts = [msg["content"] for msg in messages if msg["role"] in ["user", "assistant"]]
             metadatas = [{"session_id": msg["session_id"], "role": msg["role"], "type": "message"} for msg in messages if msg["role"] in ["user", "assistant"]]
@@ -16,7 +16,7 @@ class VectorStore:
                 response = self.client.from_("user_documents").select("file_name").eq("document_id", doc_id).execute()
                 if response.data:
                     texts.append(response.data[0]["file_name"])  # Using file_name as a proxy; ideally, fetch document content
-                    metadatas.append({"session_id": msg["session_id"], "document_id": doc_id, "type": "document"})
+                    metadatas.append({"session_id": session_id, "document_id": doc_id, "type": "document"})
             
             if texts and metadatas:
                 self.vector_store = SupabaseVectorStore.from_texts(

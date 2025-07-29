@@ -27,19 +27,22 @@ DROP TABLE IF EXISTS documents;
 
 -- Create documents table for vector storage
 CREATE TABLE documents (
-    id BIGSERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     content TEXT,
     metadata JSONB,
-    embedding VECTOR(768)  -- Updated to match 768-dimensional embeddings
+    embedding VECTOR(3072)
 );
+
+-- Create index for faster vector searches
+CREATE INDEX ON documents USING ivfflat (embedding vector_cosine_ops);
 
 -- Create match_documents function for similarity search
 CREATE OR REPLACE FUNCTION match_documents (
-    query_embedding VECTOR(768),  -- Updated to 768 dimensions
+    query_embedding VECTOR(3072),
     match_count INT DEFAULT NULL,
     filter JSONB DEFAULT '{}'
 ) RETURNS TABLE (
-    id BIGINT,
+    id UUID,
     content TEXT,
     metadata JSONB,
     similarity FLOAT
@@ -57,6 +60,9 @@ BEGIN
     LIMIT match_count;
 END;
 $$;
+
+-- Enable row-level security on documents table
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 
 -- Set permissions for service role to insert into documents table
 CREATE POLICY "Allow service role insert on documents" ON documents

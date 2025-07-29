@@ -81,7 +81,7 @@ def main():
             st.error(f"Error loading document: {str(e)}")
 
     # Initialize vector store with messages and documents
-    vector_store.initialize(st.session_state.messages, st.session_state.document_ids)
+    vector_store.initialize(st.session_state.messages, st.session_state.document_ids, st.session_state.session_id)
 
     # System prompt
     system_prompt = SystemMessage(content="You are a helpful assistant that can process text, images, and documents. Provide accurate and concise responses, using provided document context when relevant.")
