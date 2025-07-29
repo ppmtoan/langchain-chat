@@ -42,7 +42,7 @@ CREATE OR REPLACE FUNCTION match_documents (
     match_count INT DEFAULT NULL,
     filter JSONB DEFAULT '{}'
 ) RETURNS TABLE (
-    id UUID,
+    doc_id UUID,  -- Renamed to avoid ambiguity
     content TEXT,
     metadata JSONB,
     similarity FLOAT
@@ -50,12 +50,12 @@ CREATE OR REPLACE FUNCTION match_documents (
 BEGIN
     RETURN QUERY
     SELECT
-        id,
-        content,
-        metadata,
+        documents.id,
+        documents.content,
+        documents.metadata,
         1 - (documents.embedding <=> query_embedding) AS similarity
     FROM documents
-    WHERE metadata @> filter
+    WHERE documents.metadata @> filter
     ORDER BY similarity DESC
     LIMIT match_count;
 END;

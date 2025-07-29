@@ -47,7 +47,11 @@ class VectorStore:
     def get_context(self, query):
         if self.vector_store:
             try:
-                return self.vector_store.as_retriever().invoke(query)
+                retriever = self.vector_store.as_retriever(
+                    search_type="similarity",
+                    search_kwargs={"k": 4}
+                )
+                return retriever.invoke(query)
             except Exception as e:
                 print(f"Error retrieving context: {str(e)}")
         return []
