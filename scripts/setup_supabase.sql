@@ -7,9 +7,10 @@ CREATE TABLE messages (
     session_id VARCHAR NOT NULL,
     role VARCHAR NOT NULL,
     content TEXT NOT NULL,
-    image_path VARCHAR,
+    image_url VARCHAR,
     timestamp TIMESTAMPTZ DEFAULT NOW()
 );
+
 -- Create user_documents table
 CREATE TABLE user_documents (
     id SERIAL PRIMARY KEY,
@@ -17,5 +18,52 @@ CREATE TABLE user_documents (
     file_name VARCHAR NOT NULL,
     storage_path VARCHAR NOT NULL,
     session_id VARCHAR NOT NULL,
+    public_url VARCHAR NOT NULL,
     timestamp TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Drop existing documents table if it exists
+DROP TABLE IF EXISTS documents;
+
+-- Create documents table for vector storage
+CREATE TABLE documents (
+    id BIGSERIAL PRIMARY KEY,
+    content TEXT,
+    metadata JSONB,
+    embedding VECTOR(768)  -- Updated to match 768-dimensional embeddings
+);
+
+-- Create match_documents function for similarity search
+CREATE OR REPLACE FUNCTION match_documents (
+    query_embedding VECTOR(768),  -- Updated to 768 dimensions
+    match_count INT DEFAULT NULL,
+    filter JSONB DEFAULT '{}'
+) RETURNS TABLE (
+    id BIGINT,
+    content TEXT,
+    metadata JSONB,
+    similarity FLOAT
+) LANGUAGE plpgsql AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        id,
+        content,
+        metadata,
+        1 - (documents.embedding <=> query_embedding) AS similarity
+    FROM documents
+    WHERE metadata @> filter
+    ORDER BY similarity DESC
+    LIMIT match_count;
+END;
+$$;
+
+-- Set permissions for service role to insert into documents table
+CREATE POLICY "Allow service role insert on documents" ON documents
+FOR INSERT
+WITH CHECK (auth.role() = 'service_role');
+
+-- Set permissions for service role to select from documents table
+CREATE POLICY "Allow service role select on documents" ON documents
+FOR SELECT
+USING (auth.role() = 'service_role');
