@@ -1,5 +1,8 @@
 import sys
 import os
+# Add current working directory to Python path
+sys.path.append(os.getcwd())
+
 import uuid
 import streamlit as st
 from app.config import Config
@@ -15,8 +18,6 @@ from typing import List, TypedDict
 from langchain_core.documents import Document
 from langchain_core.messages import HumanMessage, SystemMessage
 
-# Add current working directory to Python path
-sys.path.append(os.getcwd())
 
 # Define fallback RAG prompt
 FALLBACK_RAG_PROMPT = PromptTemplate(
@@ -113,7 +114,7 @@ def setup_api_keys():
         os.environ[Config.SUPABASE_URL] = st.secrets["SUPABASE_URL"]
         os.environ[Config.SUPABASE_KEY] = st.secrets["SUPABASE_KEY"]
         os.environ[Config.GOOGLE_API_KEY] = st.secrets["GOOGLE_API_KEY"]
-        os.environ["LANGSMITH_API_KEY"] = st.secrets["LANGSMITH_API_KEY"]
+        os.environ[Config.LANGSMITH_API_KEY] = st.secrets["LANGSMITH_API_KEY"]
         return True
     return False
 
