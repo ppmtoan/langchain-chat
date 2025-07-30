@@ -1,10 +1,14 @@
+import asyncio
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from app.config import Config
-import os
 
 class GeminiModel:
     def __init__(self):
         try:
+            try:
+                asyncio.get_running_loop()
+            except RuntimeError:
+                asyncio.set_event_loop(asyncio.new_event_loop())
             self.llm = ChatGoogleGenerativeAI(
                 model=Config.GEMINI_MODEL,
                 temperature=Config.TEMPERATURE,
