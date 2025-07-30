@@ -1,4 +1,7 @@
+import uuid
 from langchain_community.vectorstores import SupabaseVectorStore
+import streamlit as st
+from typing import List
 
 class VectorStore:
     def __init__(self, client, embeddings):
@@ -6,10 +9,10 @@ class VectorStore:
         self.embeddings = embeddings
         self.vector_store = None
 
-    def initialize(self, messages, document_ids, session_id):
+    def initialize(self, messages: List[dict], document_ids: List[str], session_id: str):
         try:
             texts = [msg["content"] for msg in messages if msg["role"] in ["user", "assistant"]]
-            metadatas = [{"session_id": msg["session_id"], "role": msg["role"], "type": "message"} for msg in messages if msg["role"] in ["user", "assistant"]]
+            metadatas = [{"session_id": session_id, "role": msg["role"], "type": "message"} for msg in messages if msg["role"] in ["user", "assistant"]]
             
             # Fetch document content from user_documents table
             for doc_id in document_ids:
@@ -56,10 +59,15 @@ class VectorStore:
                 print(f"Error retrieving context: {str(e)}")
         return []
 
+    def retrieve(self, query: str) -> List:
+        """Retrieve documents for LangGraph node."""
+        return self.get_context(query)
+
     def clear(self, session_id):
         try:
             self.client.from_("documents").delete().eq("metadata->>session_id", session_id).execute()
             self.client.from_("user_documents").delete().eq("session_id", session_id).execute()
             self.vector_store = None
         except Exception as e:
-            print(f"Error clearing vector store: {str(e)}")
+            st.error(f"Error clearing vector store: {str(e)}")
+            print(f"Full error details (clear): {e.__dict__}")
